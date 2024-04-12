@@ -20,7 +20,7 @@ def train(train_dataloader, model, opt, epoch, args, writer):
         labels = labels.to(args.device).to(torch.long)
 
         # ------ TO DO: Forward Pass ------
-        predictions = 
+        predictions = model(point_clouds)
 
         if (args.task == "seg"):
             labels = labels.reshape([-1])
@@ -55,7 +55,7 @@ def test(test_dataloader, model, epoch, args, writer):
 
             # ------ TO DO: Make Predictions ------
             with torch.no_grad():
-                pred_labels = 
+                pred_labels = torch.argmax(model(point_clouds), dim=-1, keepdim=False)
             correct_obj += pred_labels.eq(labels.data).cpu().sum().item()
             num_obj += labels.size()[0]
 
@@ -74,7 +74,7 @@ def test(test_dataloader, model, epoch, args, writer):
 
             # ------ TO DO: Make Predictions ------
             with torch.no_grad():     
-                pred_labels = 
+                pred_labels = torch.argmax(model(point_clouds), dim=-1, keepdim=False)
 
             correct_point += pred_labels.eq(labels.data).cpu().sum().item()
             num_point += labels.view([-1,1]).size()[0]
@@ -99,9 +99,9 @@ def main(args):
 
     # ------ TO DO: Initialize Model ------
     if args.task == "cls":
-        model = 
+        model = cls_model().to(args.device)
     else:
-        model = 
+        model = seg_model().to(args.device)
     
     # Load Checkpoint 
     if args.load_checkpoint:
@@ -165,6 +165,7 @@ def create_parser():
     parser.add_argument('--lr', type=float, default=0.001, help='The learning rate (default 0.001)')
 
     parser.add_argument('--exp_name', type=str, default="exp", help='The name of the experiment')
+    parser.add_argument('--device', type=str, default=None, help='Deivce to train the model on')
 
     # Directories and checkpoint/sample iterations
     parser.add_argument('--main_dir', type=str, default='./data/')
@@ -180,7 +181,10 @@ def create_parser():
 if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
-    args.device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
+    if args.device is None:
+        args.device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
+    else:
+        args.device = torch.device(args.device)
     args.checkpoint_dir = args.checkpoint_dir+"/"+args.task # checkpoint directory is task specific
 
     main(args)
