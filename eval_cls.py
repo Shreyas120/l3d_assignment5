@@ -61,8 +61,21 @@ if __name__ == '__main__':
     pred_label = torch.argmax(pred_label, dim=1).to('cpu')
 
     # Compute Accuracy
-    test_accuracy = pred_label.eq(test_label.data).cpu().sum().item() / (test_label.size()[0])
+    res = pred_label.eq(test_label.data).cpu()
+    test_accuracy =res.sum().item() / (test_label.size()[0])
     print ("test accuracy: {}".format(test_accuracy))
 
     # Save Visualization    
-    viz_cls(test_data[args.i], "{}/{}_pred{}_gt{}.gif".format(args.output_dir, args.model, pred_label[args.i], int(test_label[args.i].item())), args.device)
+    tp_idxs = np.argwhere(res==True)[0]
+    for idx in np.random.choice(tp_idxs, 3, replace=False):
+        viz_cls(test_data[idx], "{}/{}/pred{}_gt{}_TP{}.gif".format(args.output_dir, args.model, pred_label[idx], int(test_label[idx].item()), idx), args.device)
+
+    fp_idxs = np.argwhere(res==False)[0]
+    cl = np.arange(0, args.num_cls_class)
+    for idx in fp_idxs:
+        if int(test_label[idx].item()) in cl:
+            cl = np.delete(cl, np.where(cl == int(test_label[idx].item())))
+            viz_cls(test_data[idx], "{}/{}/pred{}_gt{}_FP{}.gif".format(args.output_dir, args.model, pred_label[idx], int(test_label[idx].item()), idx), args.device)
+    
+    # print([pred_label.eq(test_label.data)])
+    # viz_cls(test_data[args.i], "{}/{}_pred{}_gt{}.gif".format(args.output_dir, args.model, pred_label[args.i], int(test_label[args.i].item())), args.device)

@@ -21,7 +21,7 @@ def create_parser():
 
     parser.add_argument('--test_data', type=str, default='./data/seg/data_test.npy')
     parser.add_argument('--test_label', type=str, default='./data/seg/label_test.npy')
-    parser.add_argument('--output_dir', type=str, default='./output')
+    parser.add_argument('--output_dir', type=str, default='./output/seg')
 
     parser.add_argument('--exp_name', type=str, default="exp", help='The name of the experiment')
 
@@ -55,9 +55,20 @@ if __name__ == '__main__':
     pred_label = model(test_data.to(args.device))
     pred_label = torch.argmax(pred_label, dim=2).to('cpu')
 
-    test_accuracy = pred_label.eq(test_label.data).cpu().sum().item() / (test_label.reshape((-1,1)).size()[0])
+    res =  pred_label.eq(test_label.data).cpu()
+    # per object accuracy
+    test_accuracy_objs = res.sum(dim=1)/args.num_points
+
+    # overall accuracy
+    test_accuracy = (test_accuracy_objs.sum()/res.shape[0]).item()
     print ("test accuracy: {}".format(test_accuracy))
 
-    # Visualize Segmentation Result (Pred VS Ground Truth)
-    viz_seg(test_data[args.i], test_label[args.i], "{}/gt_{}.gif".format(args.output_dir, args.exp_name), args.device)
-    viz_seg(test_data[args.i], pred_label[args.i], "{}/pred_{}.gif".format(args.output_dir, args.exp_name), args.device)
+    sorted_results = torch.argsort(test_accuracy_objs)
+    
+    for idx in torch.cat((sorted_results[:2], sorted_results[-3:])):
+        idx = idx.item()
+        viz_seg(test_data[idx], test_label[idx], "{}/gt_{}.gif".format(args.output_dir, idx), args.device)
+        viz_seg(test_data[idx], pred_label[idx], "{}/pred_{}_acc{}.gif".format(args.output_dir, idx, int(test_accuracy_objs[idx]*100)), args.device)
+   
+   
+    
