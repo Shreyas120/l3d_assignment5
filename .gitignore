@@ -5,3 +5,4 @@ checkpoints/
 jobs/
 *.zip
 *.gif
+output/

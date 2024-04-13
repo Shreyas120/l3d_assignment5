@@ -112,3 +112,35 @@ def viz_cls (verts, path, device):
 
     rend = (rend * 255).astype(np.uint8)
     imageio.mimsave(path, rend, fps=15, loop=0)
+
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+def viz_conf_mat(y_true, y_pred, classes, save_path):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
+    plt.xlabel('Predicted Labels')
+    plt.ylabel('True Labels')
+    plt.title('Confusion Matrix')
+    plt.savefig(save_path)
+        
+from scipy.spatial.transform import Rotation 
+def get_rotation_matrix_tensor(magDegrees): 
+    """
+    Generate a random rotation matrix tensor
+    """
+    vec = np.random.rand(3)
+    unit_vec = vec/np.linalg.norm(vec)
+    R = Rotation.from_rotvec(magDegrees*unit_vec, degrees=True)
+    return torch.tensor(R.as_matrix(), dtype=torch.float32)
+
+def eval_in_batches(data, model, device, batch_size=16):
+    predictions = []
+    with torch.no_grad():  # Disable gradient computation for inference
+        for i in range(0, len(data), batch_size):
+            batch = data[i:i + batch_size].to(device)
+            batch_preds = model(batch)
+            predictions.append(batch_preds)
+    predictions = torch.cat(predictions, dim=0)
+    return predictions
