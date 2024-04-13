@@ -2,7 +2,7 @@ import numpy as np
 import argparse
 
 import torch
-from models import cls_model
+from models import cls_model, cls_ppp, cls_tra
 from utils import create_dir
 
 def create_parser():
@@ -22,7 +22,7 @@ def create_parser():
     parser.add_argument('--output_dir', type=str, default='./output')
 
     parser.add_argument('--exp_name', type=str, default="exp", help='The name of the experiment')
-
+    parser.add_argument('--model', type=str, default='cls', help='Random seed')
     return parser
 
 
@@ -34,9 +34,16 @@ if __name__ == '__main__':
     create_dir(args.output_dir)
 
     # ------ TO DO: Initialize Model for Classification Task ------
-    model = cls_model().to(args.device)
+    if args.model == 'cls':
+        model = cls_model().to(args.device)
+    elif args.model == 'cls_ppp':
+        model = cls_ppp().to(args.device)
+    elif args.model == 'cls_tra':
+        model = cls_tra().to(args.device)
+
     # Load Model Checkpoint
-    model_path = './checkpoints/cls/{}.pt'.format(args.load_checkpoint)
+    model_path = './checkpoints/{}/{}.pt'.format(args.model,args.load_checkpoint)
+    print(model_path)
     with open(model_path, 'rb') as f:
         state_dict = torch.load(f, map_location=args.device)
         model.load_state_dict(state_dict)
@@ -51,6 +58,7 @@ if __name__ == '__main__':
 
     # ------ TO DO: Make Prediction ------
     pred_label = model(test_data.to(args.device))
+    pred_label = torch.argmax(pred_label, dim=1).to('cpu')
 
     # Compute Accuracy
     test_accuracy = pred_label.eq(test_label.data).cpu().sum().item() / (test_label.size()[0])

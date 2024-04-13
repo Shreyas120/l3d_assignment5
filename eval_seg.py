@@ -53,6 +53,7 @@ if __name__ == '__main__':
 
     # ------ TO DO: Make Prediction ------
     pred_label = model(test_data.to(args.device))
+    pred_label = torch.argmax(pred_label, dim=2).to('cpu')
 
     test_accuracy = pred_label.eq(test_label.data).cpu().sum().item() / (test_label.reshape((-1,1)).size()[0])
     print ("test accuracy: {}".format(test_accuracy))

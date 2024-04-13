@@ -8,6 +8,7 @@ from pytorch3d.renderer import (
     PointsRasterizer,
 )
 import imageio
+import numpy as np
 
 def save_checkpoint(epoch, model, args, best=False):
     if best:
@@ -70,7 +71,7 @@ def viz_seg (verts, labels, path, device):
 
     sample_verts = verts.unsqueeze(0).repeat(30,1,1).to(torch.float)
     sample_labels = labels.unsqueeze(0)
-    sample_colors = torch.zeros((1,10000,3))
+    sample_colors = torch.zeros((1,verts.shape[0],3))
 
     # Colorize points based on segmentation labels
     for i in range(6):
@@ -84,5 +85,5 @@ def viz_seg (verts, labels, path, device):
     rend = renderer(point_cloud, cameras=c).cpu().numpy() # (30, 256, 256, 3)
     rend = (rend * 255).astype(np.uint8)
 
-    imageio.mimsave(path, rend, fps=15)
+    imageio.mimsave(path, rend, fps=15, loop=0)
 
