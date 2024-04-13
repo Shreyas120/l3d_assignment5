@@ -4,11 +4,11 @@ import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from models import cls_model, seg_model, cls_ppp
+from models import cls_model, seg_model, cls_ppp, cls_tra
 from data_loader import get_data_loader
 from utils import save_checkpoint, create_dir
 
-def train(train_dataloader, model, opt, epoch, args, writer):
+def train(train_dataloader, model, opt, epoch, args, writer, accumulation_steps = 32):
     
     model.train()
     step = epoch*len(train_dataloader)
@@ -31,10 +31,13 @@ def train(train_dataloader, model, opt, epoch, args, writer):
         loss = criterion(predictions, labels)
         epoch_loss += loss
 
-        # Backward and Optimize
-        opt.zero_grad()
+        loss = loss / accumulation_steps
         loss.backward()
-        opt.step()
+
+        # Backward and Optimize
+        if (i + 1) % accumulation_steps == 0:
+            opt.step()
+            opt.zero_grad()
 
         writer.add_scalar('train_loss', loss.item(), step+i)
 
@@ -104,6 +107,8 @@ def main(args):
         model = seg_model().to(args.device)
     elif args.task == "cls_ppp":
         model = cls_ppp().to(args.device)
+    elif args.task == "cls_tra":
+        model = cls_tra().to(args.device)
     
     # Load Checkpoint 
     if args.load_checkpoint:

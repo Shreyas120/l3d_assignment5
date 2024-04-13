@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import math
 # ------ TO DO ------
 
 def conv_bn(in_channels, out_channels):
@@ -155,12 +155,77 @@ class cls_ppp(nn.Module):
         out = self.fc(out)
         return out
 
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=10000):
+        super(PositionalEncoding, self).__init__()
+        self.encoding = torch.zeros(max_len, d_model, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        self.encoding[:, 0::2] = torch.sin(position * div_term)
+        self.encoding[:, 1::2] = torch.cos(position * div_term)
+        self.encoding = self.encoding.unsqueeze(0)
+
+    def forward(self, x):
+        return x + self.encoding[:, :x.size(1)]
+
+class PointTransformerLayer(nn.Module):
+    def __init__(self, d_model):
+        super(PointTransformerLayer, self).__init__()
+        self.self_attn = nn.MultiheadAttention(d_model, num_heads=4, dropout=0.1)
+        self.linear1 = nn.Linear(d_model, d_model * 4)
+        self.dropout = nn.Dropout(0.1)
+        self.linear2 = nn.Linear(d_model * 4, d_model)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(0.1)
+        self.dropout2 = nn.Dropout(0.1)
+
+    def forward(self, src):
+        src2 = self.norm1(src)
+        q = k = v = src2
+        src2 = self.self_attn(q, k, v)[0]
+        src = src + self.dropout1(src2)
+        src2 = self.norm2(src)
+        src2 = self.linear2(F.relu(self.dropout(self.linear1(src2))))
+        src = src + self.dropout2(src2)
+        return src
+
+class cls_tra(nn.Module):
+    def __init__(self, num_classes=3):
+        super(cls_tra, self).__init__()
+        self.embedding = nn.Linear(3, 64)
+        self.pos_encoder = PositionalEncoding(64)
+        self.transformer = PointTransformerLayer(64)
+        self.fc = nn.Sequential(
+            nn.Linear(64, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, points):
+        points = self.embedding(points)  # (B, N, 64)
+        points = self.pos_encoder(points)
+        points = points.transpose(0, 1)  # Transformer expects (N, B, D)
+        points = self.transformer(points)
+        points = points.transpose(0, 1)  # Back to (B, N, D)
+        points = torch.max(points, dim=1)[0]  # Global max pooling
+        points = self.fc(points)
+        return points
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--cls', action='store_true', help='Visualize the classification model')
     parser.add_argument('--seg', action='store_true', help='Visualize the segmentation model')
     parser.add_argument('--cls_ppp', action='store_true', help='Visualize the pointnet++ cls model')
+    parser.add_argument('--cls_tra', action='store_true', help='Visualize the point transformer cls model')
     args = parser.parse_args()
 
     if args.cls:
@@ -173,4 +238,8 @@ if __name__ == '__main__':
     
     if args.cls_ppp:
         model = cls_ppp(num_classes=3)
-        # print(model)
+        print(model)
+
+    if args.cls_tra:
+        model = cls_tra(num_classes=3)
+        print(model)
