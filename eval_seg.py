@@ -16,7 +16,7 @@ def create_parser():
     parser.add_argument('--num_points', type=int, default=10000, help='The number of points per object to be included in the input data')
 
     # Directories and checkpoint/sample iterations
-    parser.add_argument('--load_checkpoint', type=str, default='model_epoch_0')
+    parser.add_argument('--load_checkpoint', type=str, default='best_model')
     parser.add_argument('--i', type=int, default=0, help="index of the object to visualize")
 
     parser.add_argument('--test_data', type=str, default='./data/seg/data_test.npy')
@@ -36,8 +36,7 @@ if __name__ == '__main__':
     create_dir(args.output_dir)
 
     # ------ TO DO: Initialize Model for Segmentation Task  ------
-    model = 
-    
+    model = seg_model().to(args.device)
     # Load Model Checkpoint
     model_path = './checkpoints/seg/{}.pt'.format(args.load_checkpoint)
     with open(model_path, 'rb') as f:
@@ -53,7 +52,7 @@ if __name__ == '__main__':
     test_label = torch.from_numpy((np.load(args.test_label))[:,ind])
 
     # ------ TO DO: Make Prediction ------
-    pred_label = 
+    pred_label = model(test_data.to(args.device))
 
     test_accuracy = pred_label.eq(test_label.data).cpu().sum().item() / (test_label.reshape((-1,1)).size()[0])
     print ("test accuracy: {}".format(test_accuracy))
