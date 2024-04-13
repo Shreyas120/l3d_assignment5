@@ -3,3 +3,5 @@ logs/
 *.pyc
 checkpoints/
 jobs/
+*.zip
+*.gif

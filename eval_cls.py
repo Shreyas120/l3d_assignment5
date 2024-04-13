@@ -3,7 +3,7 @@ import argparse
 
 import torch
 from models import cls_model, cls_ppp, cls_tra
-from utils import create_dir
+from utils import create_dir, viz_cls
 
 def create_parser():
     """Creates a parser for command-line arguments.
@@ -64,3 +64,5 @@ if __name__ == '__main__':
     test_accuracy = pred_label.eq(test_label.data).cpu().sum().item() / (test_label.size()[0])
     print ("test accuracy: {}".format(test_accuracy))
 
+    # Save Visualization    
+    viz_cls(test_data[args.i], "{}/{}_pred{}_gt{}.gif".format(args.output_dir, args.model, pred_label[args.i], int(test_label[args.i].item())), args.device)

@@ -87,3 +87,28 @@ def viz_seg (verts, labels, path, device):
 
     imageio.mimsave(path, rend, fps=15, loop=0)
 
+def viz_cls (verts, path, device):
+    """
+    visualize classification result
+    output: a 360-degree gif
+    """
+    image_size=256
+    background_color=(1, 1, 1)
+
+    # Construct various camera viewpoints
+    dist = 3
+    elev = 0
+    azim = [180 - 12*i for i in range(30)]
+    R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist, elev=elev, azim=azim, device=device)
+    c = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, fov=60, device=device)
+
+    sample_verts = verts.repeat(30,1,1).to(torch.float)
+    sample_colors = torch.tensor([0.0,0.5,1.0]).repeat(1,sample_verts.shape[1],1).repeat(30,1,1).to(torch.float)
+
+    point_cloud = pytorch3d.structures.Pointclouds(points=sample_verts, features=sample_colors).to(device)
+
+    renderer = get_points_renderer(image_size=image_size, background_color=background_color, device=device)
+    rend = renderer(point_cloud, cameras=c).cpu().numpy() # (30, 256, 256, 3)
+
+    rend = (rend * 255).astype(np.uint8)
+    imageio.mimsave(path, rend, fps=15, loop=0)
