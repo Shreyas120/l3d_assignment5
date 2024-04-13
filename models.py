@@ -95,11 +95,72 @@ class seg_model(nn.Module):
 
         return out
 
+class SA_Layer(nn.Module):
+    """
+    Simplified version of a set abstraction layer
+    It groups points (implicitly here) &
+    applies a series of 1D convolutional transformations to extract features.
+    """
+    def __init__(self, in_channels, mlp_channels):
+        super(SA_Layer, self).__init__()
+        self.conv = nn.Sequential()
+        current_channels = in_channels
+        for out_channels in mlp_channels:
+            self.conv.add_module('conv_bn_{}'.format(out_channels),
+                                 conv_bn(current_channels, out_channels))
+            current_channels = out_channels
+
+    def forward(self, x):
+        return self.conv(x)
+
+class cls_ppp(nn.Module):
+    def __init__(self, num_classes=3):
+        super(cls_ppp, self).__init__()
+        
+        self.conv0 = conv_bn(3, 64)
+        # Set Abstraction layers
+        self.sa1 = SA_Layer(3, [64, 64, 128])
+        self.sa2 = SA_Layer(128, [128, 128, 256])
+        self.sa3 = SA_Layer(256, [256, 512, 1024])
+
+        self.sa = nn.Sequential(
+            self.conv0,
+            self.sa1,
+            self.sa2,
+            self.sa3
+        )
+        # Fully connected layers
+        self.fc = nn.Sequential(
+            nn.Linear(1024, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, points):
+        points = points.transpose(1, 2)
+        B, _, _ = points.size()
+
+        # Applying Set Abstraction layers
+        sa_out = self.sa(points)
+        # Global max pooling
+        out = F.adaptive_max_pool1d(sa_out, 1).view(B, -1)
+
+        # Fully connected layers
+        out = self.fc(out)
+        return out
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--cls', action='store_true', help='Visualize the classification model')
-    parser.add_argument('--seg', action='store_true', help='Visualize the classification model')
+    parser.add_argument('--seg', action='store_true', help='Visualize the segmentation model')
+    parser.add_argument('--cls_ppp', action='store_true', help='Visualize the pointnet++ cls model')
     args = parser.parse_args()
 
     if args.cls:
@@ -109,3 +170,7 @@ if __name__ == '__main__':
     if args.seg:
         model = seg_model(num_seg_classes=6)
         print(model)
+    
+    if args.cls_ppp:
+        model = cls_ppp(num_classes=3)
+        # print(model)

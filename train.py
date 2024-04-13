@@ -4,7 +4,7 @@ import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from models import cls_model, seg_model
+from models import cls_model, seg_model, cls_ppp
 from data_loader import get_data_loader
 from utils import save_checkpoint, create_dir
 
@@ -45,7 +45,7 @@ def test(test_dataloader, model, epoch, args, writer):
     model.eval()
 
     # Evaluation in Classification Task
-    if (args.task == "cls"):
+    if ('cls' in args.task):
         correct_obj = 0
         num_obj = 0
         for batch in test_dataloader:
@@ -100,8 +100,10 @@ def main(args):
     # ------ TO DO: Initialize Model ------
     if args.task == "cls":
         model = cls_model().to(args.device)
-    else:
+    elif args.task == "seg":
         model = seg_model().to(args.device)
+    elif args.task == "cls_ppp":
+        model = cls_ppp().to(args.device)
     
     # Load Checkpoint 
     if args.load_checkpoint:
@@ -187,4 +189,5 @@ if __name__ == '__main__':
         args.device = torch.device(args.device)
     args.checkpoint_dir = args.checkpoint_dir+"/"+args.task # checkpoint directory is task specific
 
+    print('Training on device:', args.device)
     main(args)
